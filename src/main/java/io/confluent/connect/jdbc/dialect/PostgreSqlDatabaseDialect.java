@@ -520,7 +520,12 @@ public class PostgreSqlDatabaseDialect extends GenericDatabaseDialect {
   ) throws SQLException {
     switch (schema.type()) {
       case STRING: {
-        String newValue = ((String) value).replace("\u0000","");
+        // PostgreSQL does not allow null UTF-8 characters (\u0000) in string values
+        // Strip them to handle legacy data from systems like Oracle that permit them
+        String newValue = ((String) value).replace("\u0000", "");
+        if (!newValue.equals(value)) {
+          log.warn("Removed null UTF-8 character(s) from value in column '{}'", fieldName);
+        }
         statement.setString(index, newValue);
         return true;
       }
