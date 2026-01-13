@@ -25,7 +25,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig;
@@ -40,6 +39,7 @@ import io.confluent.connect.jdbc.util.PrimaryKeyModeRecommender;
 import io.confluent.connect.jdbc.util.QuoteMethod;
 import io.confluent.connect.jdbc.util.StringUtils;
 import io.confluent.connect.jdbc.util.TableType;
+import io.confluent.connect.jdbc.util.DateCalendarSystem;
 import io.confluent.connect.jdbc.util.TimeZoneValidator;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -69,6 +69,11 @@ public class JdbcSinkConfig extends AbstractConfig {
   public enum DateTimezone {
     DB_TIMEZONE,
     UTC
+  }
+
+  public enum TimestampPrecisionMode {
+    MICROSECONDS,
+    NANOSECONDS
   }
 
   public static final List<String> DEFAULT_KAFKA_PK_NAMES = Collections.unmodifiableList(
@@ -115,6 +120,21 @@ public class JdbcSinkConfig extends AbstractConfig {
   public static final long CONNECTION_BACKOFF_DEFAULT =
       JdbcSourceConnectorConfig.CONNECTION_BACKOFF_DEFAULT;
 
+  public static final String DATE_CALENDAR_SYSTEM_CONFIG = "date.calendar.system";
+  private static final String DATE_CALENDAR_SYSTEM_DOC =
+      "Conversion of time since epoch value in kafka topic record to DATE or TIMESTAMP "
+      + "depends on the calendar used to interpret it. If LEGACY is used, it will use the hybrid "
+      + "Gregorian/Julian calendar which was the default in the older java date time APIs. "
+      + "However, if 'PROLEPTIC_GREGORIAN' is used, then it will use the proleptic gregorian "
+      + "calendar which extends the Gregorian rules backward indefinitely and does not apply the "
+      + "1582 cutover. This matches the behavior of modern Java date/time APIs (java.time). This "
+      + "is defaulted to LEGACY for backward compatibility. The ideal setting for this depends on "
+      + "whether the values in source topic were populated using old or new java date time APIs. "
+      + "Changing this configuration on an existing connector might lead to a drift in the "
+      + "DATE/TIMESTAMP column's values populated in the sink database.";
+  public static final String DATE_CALENDAR_SYSTEM_DEFAULT = DateCalendarSystem.LEGACY.toString();
+  private static final String DATE_CALENDAR_SYSTEM_DISPLAY = "Date Calendar System";
+
   public static final String TABLE_NAME_FORMAT = "table.name.format";
   private static final String TABLE_NAME_FORMAT_DEFAULT = "${topic}";
   private static final String TABLE_NAME_FORMAT_DOC =
@@ -149,6 +169,13 @@ public class JdbcSinkConfig extends AbstractConfig {
       "Whether to treat ``null`` record values as deletes. Requires ``pk.mode`` "
       + "to be ``record_key``.";
   private static final String DELETE_ENABLED_DISPLAY = "Enable deletes";
+
+  public static final String REPLACE_NULL_WITH_DEFAULT = "replace.null.with.default";
+  private static final String REPLACE_NULL_WITH_DEFAULT_DEFAULT = "true";
+  private static final String REPLACE_NULL_WITH_DEFAULT_DOC =
+      "Whether to replace ``null`` value with default value";
+  private static final String REPLACE_NULL_WITH_DEFAULT_DISPLAY = "Replace null value with "
+      + "default value";
 
   public static final String AUTO_CREATE = "auto.create";
   private static final String AUTO_CREATE_DEFAULT = "false";
@@ -255,6 +282,26 @@ public class JdbcSinkConfig extends AbstractConfig {
       + "the timezone set for db.timzeone configuration (to maintain backward compatibility). It "
       + "is recommended to set this to UTC to avoid conversion for DATE type values.";
 
+  public static final String TIMESTAMP_PRECISION_MODE_CONFIG = "timestamp.precision.mode";
+  public static final String TIMESTAMP_PRECISION_MODE_DEFAULT =
+      TimestampPrecisionMode.MICROSECONDS.toString();
+  private static final String TIMESTAMP_PRECISION_MODE_CONFIG_DISPLAY =
+      "Sink Timestamp Precision mode";
+  private static final String TIMESTAMP_PRECISION_MODE_CONFIG_DOC =
+      "Convert the Timestamp with precision. If set to microseconds, "
+          + "the timestamp will be converted to microsecond precision. If set to "
+          + "nanoseconds the timestamp will be converted to nanoseconds precision.";
+
+  public static final String TIMESTAMP_FIELDS_LIST = "timestamp.fields.list";
+  private static final String TIMESTAMP_FIELDS_LIST_DEFAULT = "";
+  private static final String TIMESTAMP_FIELDS_LIST_DOC =
+      "List of comma-separated record value timestamp field names that should be converted "
+          + "to timestamps. These fields will be converted based on precision mode specified in "
+          + TIMESTAMP_PRECISION_MODE_CONFIG
+          + "(microseconds or nanoseconds). The timestamp fields included here "
+          + "should be Long or String type and nested fields are not supported.";
+  private static final String TIMESTAMP_FIELDS_LIST_DISPLAY = "Timestamp Fields Whitelist";
+
   public static final String QUOTE_SQL_IDENTIFIERS_CONFIG =
       JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_CONFIG;
   public static final String QUOTE_SQL_IDENTIFIERS_DEFAULT =
@@ -283,7 +330,8 @@ public class JdbcSinkConfig extends AbstractConfig {
 
   private static final EnumRecommender DATE_TIMEZONE_RECOMMENDER =
       EnumRecommender.in(DateTimezone.values());
-
+  private static final EnumRecommender TIMESTAMP_PRECISION_MODE_RECOMMENDER =
+      EnumRecommender.in(TimestampPrecisionMode.values());
   private static final EnumRecommender TABLE_TYPES_RECOMMENDER =
       EnumRecommender.in(TableType.values());
   public static final String MSSQL_USE_MERGE_HOLDLOCK = "mssql.use.merge.holdlock";
@@ -357,7 +405,8 @@ public class JdbcSinkConfig extends AbstractConfig {
             4,
             Width.LONG,
             CREDENTIALS_PROVIDER_CLASS_DISPLAY
-      ).define(
+        )
+        .define(
             DIALECT_NAME_CONFIG,
             ConfigDef.Type.STRING,
             DIALECT_NAME_DEFAULT,
@@ -439,6 +488,17 @@ public class JdbcSinkConfig extends AbstractConfig {
             ConfigDef.Width.MEDIUM,
             TABLE_TYPES_DISPLAY
         )
+        .define(
+            REPLACE_NULL_WITH_DEFAULT,
+            ConfigDef.Type.BOOLEAN,
+            REPLACE_NULL_WITH_DEFAULT_DEFAULT,
+            ConfigDef.Importance.LOW,
+            REPLACE_NULL_WITH_DEFAULT_DOC,
+            WRITES_GROUP,
+            5,
+            ConfigDef.Width.MEDIUM,
+            REPLACE_NULL_WITH_DEFAULT_DISPLAY
+        )
         // Data Mapping
         .define(
             TABLE_NAME_FORMAT,
@@ -509,6 +569,42 @@ public class JdbcSinkConfig extends AbstractConfig {
             ConfigDef.Width.MEDIUM,
             DATE_TIMEZONE_CONFIG_DISPLAY,
             DATE_TIMEZONE_RECOMMENDER
+        )
+        .define(
+            TIMESTAMP_FIELDS_LIST,
+            ConfigDef.Type.LIST,
+            TIMESTAMP_FIELDS_LIST_DEFAULT,
+            ConfigDef.Importance.MEDIUM,
+            TIMESTAMP_FIELDS_LIST_DOC,
+            DATAMAPPING_GROUP,
+            7,
+            ConfigDef.Width.MEDIUM,
+            TIMESTAMP_FIELDS_LIST_DISPLAY
+        )
+        .define(
+            TIMESTAMP_PRECISION_MODE_CONFIG,
+            ConfigDef.Type.STRING,
+            TIMESTAMP_PRECISION_MODE_DEFAULT,
+            EnumValidator.in(TimestampPrecisionMode.values()),
+            ConfigDef.Importance.LOW,
+            TIMESTAMP_PRECISION_MODE_CONFIG_DOC,
+            DATAMAPPING_GROUP,
+            8,
+            ConfigDef.Width.MEDIUM,
+            TIMESTAMP_PRECISION_MODE_CONFIG_DISPLAY,
+            TIMESTAMP_PRECISION_MODE_RECOMMENDER
+        )
+        .define(
+            DATE_CALENDAR_SYSTEM_CONFIG,
+            ConfigDef.Type.STRING,
+            DATE_CALENDAR_SYSTEM_DEFAULT,
+            ConfigDef.ValidString.in(DateCalendarSystem.getValidConfigValues()),
+            ConfigDef.Importance.LOW,
+            DATE_CALENDAR_SYSTEM_DOC,
+            DATAMAPPING_GROUP,
+            9,
+            ConfigDef.Width.MEDIUM,
+            DATE_CALENDAR_SYSTEM_DISPLAY
         )
         // DDL
         .define(
@@ -595,6 +691,7 @@ public class JdbcSinkConfig extends AbstractConfig {
   public final String tableNameFormat;
   public final int batchSize;
   public final boolean deleteEnabled;
+  public final boolean replaceNullWithDefault;
   public final int maxRetries;
   public final int retryBackoffMs;
   public final boolean autoCreate;
@@ -603,13 +700,16 @@ public class JdbcSinkConfig extends AbstractConfig {
   public final PrimaryKeyMode pkMode;
   public final List<String> pkFields;
   public final Set<String> fieldsWhitelist;
+  public final Set<String> timestampFieldsList;
   public final String dialectName;
-  public final TimeZone timeZone;
-  public final TimeZone dateTimeZone;
+  public final ZoneId zoneId;
+  public final ZoneId dateTimeZoneId;
+  public final TimestampPrecisionMode timestampPrecisionMode;
   public final EnumSet<TableType> tableTypes;
   public final boolean useHoldlockInMerge;
 
   public final boolean trimSensitiveLogsEnabled;
+  public final DateCalendarSystem dateCalendarSystem;
 
   public JdbcSinkConfig(Map<?, ?> props) {
     super(CONFIG_DEF, props);
@@ -622,8 +722,10 @@ public class JdbcSinkConfig extends AbstractConfig {
     tableNameFormat = getString(TABLE_NAME_FORMAT).trim();
     batchSize = getInt(BATCH_SIZE);
     deleteEnabled = getBoolean(DELETE_ENABLED);
+    replaceNullWithDefault = getBoolean(REPLACE_NULL_WITH_DEFAULT);
     maxRetries = getInt(MAX_RETRIES);
     retryBackoffMs = getInt(RETRY_BACKOFF_MS);
+    timestampFieldsList = new HashSet<>(getList(TIMESTAMP_FIELDS_LIST));
     autoCreate = getBoolean(AUTO_CREATE);
     autoEvolve = getBoolean(AUTO_EVOLVE);
     insertMode = InsertMode.valueOf(getString(INSERT_MODE).toUpperCase());
@@ -632,13 +734,16 @@ public class JdbcSinkConfig extends AbstractConfig {
     dialectName = getString(DIALECT_NAME_CONFIG);
     fieldsWhitelist = new HashSet<>(getList(FIELDS_WHITELIST));
     String dbTimeZone = getString(DB_TIMEZONE_CONFIG);
-    timeZone = TimeZone.getTimeZone(ZoneId.of(dbTimeZone));
+    zoneId = ZoneId.of(dbTimeZone);
     DateTimezone dateTimezoneConfig =
         DateTimezone.valueOf(getString(DATE_TIMEZONE_CONFIG).toUpperCase());
-    dateTimeZone = dateTimezoneConfig.equals(DateTimezone.UTC)
-        ? TimeZone.getTimeZone(ZoneOffset.UTC) : timeZone;
+    dateTimeZoneId = dateTimezoneConfig.equals(DateTimezone.UTC)
+        ? ZoneOffset.UTC : zoneId;
+    timestampPrecisionMode =
+        TimestampPrecisionMode.valueOf(getString(TIMESTAMP_PRECISION_MODE_CONFIG).toUpperCase());
     useHoldlockInMerge = getBoolean(MSSQL_USE_MERGE_HOLDLOCK);
     trimSensitiveLogsEnabled = getBoolean(TRIM_SENSITIVE_LOG_ENABLED);
+    dateCalendarSystem = DateCalendarSystem.fromConfigValue(getString(DATE_CALENDAR_SYSTEM_CONFIG));
     if (deleteEnabled && pkMode != PrimaryKeyMode.RECORD_KEY) {
       throw new ConfigException(
           "Primary key mode must be 'record_key' when delete support is enabled");
