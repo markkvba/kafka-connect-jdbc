@@ -298,7 +298,7 @@ cat target/kafka-connect-jdbc-*-package/manifest.json
 ### Service Status Polling Times Out
 - Check that `kafka_status.sh` is available on remote hosts at `/usr/local/bin/res_scripts/kafka_status.sh`
 - Verify service names match exactly in Jenkins configuration
-- Review Kafka Connect logs on target host: `/var/log/confluent/kafka-connect/`
+- Review Kafka Connect logs on target host: `/var/log/kafka/`
 
 ### SCP/SSH Connection Failed
 - Verify SSH key credentials are configured in Jenkins
