@@ -126,7 +126,7 @@ pipeline {
                             -o ConnectTimeout=10 \
                             -i ${SSH_KEY_FILE} \
                             ${SSH_USER}@${HOST} \
-                            "sudo mv /tmp/deploy.sh /usr/local/bin/res_scripts/kafka-connect-jdbc-deploy.sh && bash /usr/local/bin/res_scripts/kafka-connect-jdbc-deploy.sh /tmp/${PACKAGE_NAME} -c"
+                            "sudo mv /tmp/deploy.sh /usr/local/bin/res_scripts/kafka-connect-jdbc-deploy.sh && sudo chown root:root /usr/local/bin/res_scripts/kafka-connect-jdbc-deploy.sh && sudo chmod 755 /usr/local/bin/res_scripts/kafka-connect-jdbc-deploy.sh && bash /usr/local/bin/res_scripts/kafka-connect-jdbc-deploy.sh /tmp/${PACKAGE_NAME} -c"
                     done
                     
                     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
