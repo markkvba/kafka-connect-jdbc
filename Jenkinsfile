@@ -30,8 +30,9 @@ pipeline {
         SSH_KEY_FILE = '~/.ssh/kafka_connect_key'            // SSH key path
         SSH_USER = 'ec2-user'                                // SSH user for remote hosts
         
-        // Maven cache in workspace to avoid re-downloading dependencies
-        MAVEN_OPTS = "-Dmaven.repo.local=${WORKSPACE}/.m2"
+        // Maven cache OUTSIDE workspace (persists across Jenkins workspace cleanups)
+        // Uses global ~/.m2 so multiple Kafka builds share the same cache
+        MAVEN_OPTS = "-Dmaven.repo.local=${HOME}/.m2"
         
         // Kafka Connect host lists per environment (space-separated)
         // Configure in Jenkins as environment variables:
@@ -66,14 +67,14 @@ pipeline {
                 }
             }
             steps {
-                sh 'mvn clean package -DskipTests -Dcheckstyle.skip=true'
+                sh 'mvn -s maven-settings.xml clean package -DskipTests -Dcheckstyle.skip=true -T 1C'
             }
         }
 
         stage('Archive') {
             steps {
                 sh '''
-                    VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+                    VERSION=$(mvn -s maven-settings.xml help:evaluate -Dexpression=project.version -q -DforceStdout)
                     echo "VERSION=${VERSION}" > /tmp/build_version.txt
                     echo "Artifact version: ${VERSION}"
                     
