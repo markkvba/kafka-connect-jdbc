@@ -152,27 +152,26 @@ pipeline {
     }
 }
 
-// Get list of Kafka Connect hosts for the specified environment from Jenkins credentials
+// Get list of Kafka Connect hosts for the specified environment
 def getDeploymentHosts(String environment) {
-    def hostsVar = "KAFKA_CONNECT_HOSTS_${environment.toUpperCase()}"
-    def hosts = env.get(hostsVar)
+    def env_upper = environment.toUpperCase()
+    def hosts = System.getenv("KAFKA_CONNECT_HOSTS_${env_upper}")
     
     if (!hosts) {
-        echo "Warning: ${hostsVar} not configured in Jenkins environment"
+        echo "Warning: KAFKA_CONNECT_HOSTS_${env_upper} not configured"
         return []
     }
     
-    // Parse space-separated host list
     return hosts.split('\\s+')
 }
 
 // Get Kafka Connect service name for the specified environment
 def getServiceName(String environment) {
-    def serviceVar = "KAFKA_CONNECT_SERVICE_${environment.toUpperCase()}"
-    def serviceName = env.get(serviceVar)
+    def env_upper = environment.toUpperCase()
+    def serviceName = System.getenv("KAFKA_CONNECT_SERVICE_${env_upper}")
     
     if (!serviceName) {
-        echo "Error: ${serviceVar} not configured in Jenkins environment"
+        echo "Error: KAFKA_CONNECT_SERVICE_${env_upper} not configured"
         return null
     }
     
