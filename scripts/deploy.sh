@@ -95,7 +95,7 @@ if [ "$RESTART_MODE" = "-c" ]; then
     max_attempts=5
     attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if ! sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -q "✔.*Connector"; then
+        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -iq "stopped"; then
             echo "✓ Kafka Connect is stopped"
             break
         fi
@@ -122,7 +122,7 @@ if [ "$RESTART_MODE" = "-c" ]; then
     max_attempts=5
     attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -q "✔.*Connector"; then
+        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -iq "running"; then
             echo "✓ Kafka Connect is ready"
             break
         fi
@@ -150,7 +150,7 @@ else
     max_attempts=5
     attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if ! sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -q "✔.*Connector"; then
+        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -iq "stopped"; then
             echo "✓ Kafka Connect is stopped"
             break
         fi
@@ -177,7 +177,7 @@ else
     max_attempts=30
     attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -q "✔.*Connector"; then
+        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -iq "running"; then
             echo "✓ Kafka Connect is ready"
             break
         fi
