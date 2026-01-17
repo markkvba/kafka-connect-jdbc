@@ -88,7 +88,7 @@ pipeline {
                     ENV_UPPER=$(echo ${ENVIRONMENT} | tr '[:lower:]' '[:upper:]')
                     HOSTS_VAR="KAFKA_CONNECT_HOSTS_${ENV_UPPER}"
                     
-                    HOSTS=$(eval echo \$$HOSTS_VAR)
+                    eval "HOSTS=\$$HOSTS_VAR"
                     
                     if [ -z "$HOSTS" ]; then
                         echo "Error: $HOSTS_VAR not configured"
