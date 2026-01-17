@@ -8,6 +8,12 @@
         <format>dir</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
+    <files>
+        <file>
+            <source>${project.build.directory}/manifest.json</source>
+            <outputDirectory>/</outputDirectory>
+        </file>
+    </files>
     <fileSets>
         <fileSet>
             <directory>${project.basedir}</directory>
