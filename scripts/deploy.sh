@@ -2,8 +2,7 @@
 set -e
 
 PACKAGE_DIR="${1:?Error: Package directory path not provided}"
-SERVICE_NAME="${2:?Error: Service name not provided}"
-RESTART_MODE="${3:}"  # Optional: "-c" to restart only Connect, default restarts full cluster
+RESTART_MODE="${2:}"  # "-c" to restart only Connect, default restarts full cluster
 KAFKA_CONNECT_PLUGINS_DIR="/usr/share/java/connect_plugins/"
 PLUGIN_DIR="${KAFKA_CONNECT_PLUGINS_DIR}confluentinc-kafka-connect-jdbc"
 
@@ -20,7 +19,6 @@ fi
 
 echo "Deploying kafka-connect-jdbc from: $PACKAGE_DIR"
 echo "Target plugin directory: $PLUGIN_DIR"
-echo "Service: $SERVICE_NAME"
 echo ""
 
 # Remove existing plugin directory

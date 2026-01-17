@@ -38,8 +38,6 @@ pipeline {
         // Configure in Jenkins as environment variables:
         // KAFKA_CONNECT_HOSTS_DEV, KAFKA_CONNECT_HOSTS_STAGE, KAFKA_CONNECT_HOSTS_PROD
         
-        // Kafka Connect service names per environment (configure in Jenkins)
-        // KAFKA_CONNECT_SERVICE_DEV, KAFKA_CONNECT_SERVICE_STAGE, KAFKA_CONNECT_SERVICE_PROD
     }
 
     stages {
@@ -86,59 +84,48 @@ pipeline {
                     # Get version from file written in Archive stage
                     VERSION=$(cat /tmp/build_version.txt | sed 's/VERSION=//')
                     
-                    # Get hosts and service name for environment
+                    # Get hosts for environment
                     ENV_UPPER=$(echo ${ENVIRONMENT} | tr '[:lower:]' '[:upper:]')
                     HOSTS_VAR="KAFKA_CONNECT_HOSTS_${ENV_UPPER}"
-                    SERVICE_VAR="KAFKA_CONNECT_SERVICE_${ENV_UPPER}"
                     
                     HOSTS=$(eval echo \$$HOSTS_VAR)
-                    SERVICE=$(eval echo \$$SERVICE_VAR)
                     
                     if [ -z "$HOSTS" ]; then
                         echo "Error: $HOSTS_VAR not configured"
                         exit 1
                     fi
                     
-                    if [ -z "$SERVICE" ]; then
-                        echo "Error: $SERVICE_VAR not configured"
-                        exit 1
-                    fi
-                    
                     PACKAGE_NAME="kafka-connect-jdbc-${VERSION}-package"
+                    PACKAGE_PATH="${WORKSPACE}/target/${PACKAGE_NAME}"
                     
                     echo "Deploying kafka-connect-jdbc v${VERSION} to ${ENVIRONMENT}"
                     echo "Target hosts: ${HOSTS}"
-                    echo "Service name: ${SERVICE}"
                     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    
-                    # Create package tarball
-                    cd ${WORKSPACE}/target
-                    tar czf /tmp/${PACKAGE_NAME}.tar.gz ${PACKAGE_NAME}/
                     
                     # Deploy to each host
                     for HOST in $HOSTS; do
                         echo "Deploying to: $HOST"
                         
-                        # Copy package to remote host
-                        scp -o StrictHostKeyChecking=no \
+                        # Copy package directory to remote host
+                        scp -r -o StrictHostKeyChecking=no \
                             -o ConnectTimeout=10 \
                             -i ${SSH_KEY_FILE} \
-                            /tmp/${PACKAGE_NAME}.tar.gz \
+                            ${PACKAGE_PATH} \
                             ${SSH_USER}@${HOST}:/tmp/
                         
-                        # Copy deploy script to remote host
+                        # Copy deploy script to remote host via temp, then move to final location
                         scp -o StrictHostKeyChecking=no \
                             -o ConnectTimeout=10 \
                             -i ${SSH_KEY_FILE} \
                             ${WORKSPACE}/scripts/deploy.sh \
                             ${SSH_USER}@${HOST}:/tmp/
                         
-                        # Execute deployment script on remote host
+                        # Move deploy script to executable directory and execute
                         ssh -o StrictHostKeyChecking=no \
                             -o ConnectTimeout=10 \
                             -i ${SSH_KEY_FILE} \
                             ${SSH_USER}@${HOST} \
-                            "cd /tmp && tar xzf ${PACKAGE_NAME}.tar.gz && bash /tmp/deploy.sh /tmp/${PACKAGE_NAME} ${SERVICE}"
+                            "sudo mv /tmp/deploy.sh /usr/local/bin/res_scripts/kafka-connect-jdbc-deploy.sh && bash /usr/local/bin/res_scripts/kafka-connect-jdbc-deploy.sh /tmp/${PACKAGE_NAME} -c"
                     done
                     
                     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
