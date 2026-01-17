@@ -49,6 +49,22 @@ pipeline {
         }
 
         stage('Build') {
+            when {
+                expression {
+                    // Skip build if deploying AND a package archive already exists
+                    if (params.DEPLOY_TO_KAFKA_CONNECT == true) {
+                        def packageExists = sh(
+                            script: 'ls -d target/kafka-connect-jdbc-*-package 2>/dev/null | head -1',
+                            returnStdout: true
+                        ).trim()
+                        if (packageExists) {
+                            echo "Deploy mode: Package archive found (${packageExists}), skipping build"
+                            return false
+                        }
+                    }
+                    return true
+                }
+            }
             steps {
                 sh 'mvn clean package -DskipTests -Dcheckstyle.skip=true'
             }
