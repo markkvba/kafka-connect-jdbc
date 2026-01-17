@@ -80,61 +80,70 @@ pipeline {
                 expression { params.DEPLOY_TO_KAFKA_CONNECT == true }
             }
             steps {
-                script {
-                    // Get version from file written in Archive stage
-                    def versionFile = readFile('/tmp/build_version.txt').trim()
-                    def version = versionFile.replaceAll('VERSION=', '')
+                sh '''
+                    set -e
                     
-                    // Determine host list and service name based on environment
-                    def hosts = getDeploymentHosts(params.ENVIRONMENT)
-                    def serviceName = getServiceName(params.ENVIRONMENT)
+                    # Get version from file written in Archive stage
+                    VERSION=$(cat /tmp/build_version.txt | sed 's/VERSION=//')
                     
-                    if (!hosts || hosts.isEmpty()) {
-                        error("No hosts configured for environment: ${params.ENVIRONMENT}")
-                    }
+                    # Get hosts and service name for environment
+                    ENV_UPPER=$(echo ${ENVIRONMENT} | tr '[:lower:]' '[:upper:]')
+                    HOSTS_VAR="KAFKA_CONNECT_HOSTS_${ENV_UPPER}"
+                    SERVICE_VAR="KAFKA_CONNECT_SERVICE_${ENV_UPPER}"
                     
-                    echo "Deploying kafka-connect-jdbc v${version} to ${params.ENVIRONMENT}"
-                    echo "Target hosts: ${hosts.join(', ')}"
-                    echo "Service name: ${serviceName}"
+                    HOSTS=$(eval echo \$$HOSTS_VAR)
+                    SERVICE=$(eval echo \$$SERVICE_VAR)
                     
-                    def packageName = "kafka-connect-jdbc-${version}-package"
+                    if [ -z "$HOSTS" ]; then
+                        echo "Error: $HOSTS_VAR not configured"
+                        exit 1
+                    fi
                     
-                    // Deploy to each host
-                    hosts.each { host ->
-                        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                        echo "Deploying to: ${host}"
-                        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    if [ -z "$SERVICE" ]; then
+                        echo "Error: $SERVICE_VAR not configured"
+                        exit 1
+                    fi
+                    
+                    PACKAGE_NAME="kafka-connect-jdbc-${VERSION}-package"
+                    
+                    echo "Deploying kafka-connect-jdbc v${VERSION} to ${ENVIRONMENT}"
+                    echo "Target hosts: ${HOSTS}"
+                    echo "Service name: ${SERVICE}"
+                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    
+                    # Create package tarball
+                    cd ${WORKSPACE}/target
+                    tar czf /tmp/${PACKAGE_NAME}.tar.gz ${PACKAGE_NAME}/
+                    
+                    # Deploy to each host
+                    for HOST in $HOSTS; do
+                        echo "Deploying to: $HOST"
                         
-                        sh '''
-                            # Create package tarball
-                            cd ${WORKSPACE}/target
-                            tar czf /tmp/${PACKAGE_NAME}.tar.gz ${PACKAGE_NAME}/
-                            
-                            # Copy package to remote host
-                            scp -o StrictHostKeyChecking=no \
-                                -o ConnectTimeout=10 \
-                                -i ${SSH_KEY_FILE} \
-                                /tmp/${PACKAGE_NAME}.tar.gz \
-                                ${SSH_USER}@${HOST}:/tmp/
-                            
-                            # Copy deploy script to remote host
-                            scp -o StrictHostKeyChecking=no \
-                                -o ConnectTimeout=10 \
-                                -i ${SSH_KEY_FILE} \
-                                ${WORKSPACE}/scripts/deploy.sh \
-                                ${SSH_USER}@${HOST}:/tmp/
-                            
-                            # Execute deployment script on remote host
-                            ssh -o StrictHostKeyChecking=no \
-                                -o ConnectTimeout=10 \
-                                -i ${SSH_KEY_FILE} \
-                                ${SSH_USER}@${HOST} \
-                                "cd /tmp && tar xzf ${PACKAGE_NAME}.tar.gz && bash /tmp/deploy.sh /tmp/${PACKAGE_NAME} ${SERVICE_NAME}"
-                        '''
-                    }
+                        # Copy package to remote host
+                        scp -o StrictHostKeyChecking=no \
+                            -o ConnectTimeout=10 \
+                            -i ${SSH_KEY_FILE} \
+                            /tmp/${PACKAGE_NAME}.tar.gz \
+                            ${SSH_USER}@${HOST}:/tmp/
+                        
+                        # Copy deploy script to remote host
+                        scp -o StrictHostKeyChecking=no \
+                            -o ConnectTimeout=10 \
+                            -i ${SSH_KEY_FILE} \
+                            ${WORKSPACE}/scripts/deploy.sh \
+                            ${SSH_USER}@${HOST}:/tmp/
+                        
+                        # Execute deployment script on remote host
+                        ssh -o StrictHostKeyChecking=no \
+                            -o ConnectTimeout=10 \
+                            -i ${SSH_KEY_FILE} \
+                            ${SSH_USER}@${HOST} \
+                            "cd /tmp && tar xzf ${PACKAGE_NAME}.tar.gz && bash /tmp/deploy.sh /tmp/${PACKAGE_NAME} ${SERVICE}"
+                    done
                     
+                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                     echo "✓ Deployment to all hosts complete"
-                }
+                '''
             }
         }
     }
@@ -150,30 +159,6 @@ pipeline {
             echo "✗ Build or deployment failed"
         }
     }
+
 }
 
-// Get list of Kafka Connect hosts for the specified environment
-def getDeploymentHosts(String environment) {
-    def env_upper = environment.toUpperCase()
-    def hosts = System.getenv("KAFKA_CONNECT_HOSTS_${env_upper}")
-    
-    if (!hosts) {
-        echo "Warning: KAFKA_CONNECT_HOSTS_${env_upper} not configured"
-        return []
-    }
-    
-    return hosts.split('\\s+')
-}
-
-// Get Kafka Connect service name for the specified environment
-def getServiceName(String environment) {
-    def env_upper = environment.toUpperCase()
-    def serviceName = System.getenv("KAFKA_CONNECT_SERVICE_${env_upper}")
-    
-    if (!serviceName) {
-        echo "Error: KAFKA_CONNECT_SERVICE_${env_upper} not configured"
-        return null
-    }
-    
-    return serviceName
-}
