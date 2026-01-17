@@ -9,6 +9,7 @@ pipeline {
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timestamps()
+        disableConcurrentBuilds()
     }
 
     parameters {
@@ -28,6 +29,9 @@ pipeline {
         // SSH deployment settings (shared with SMT)
         SSH_KEY_FILE = '~/.ssh/kafka_connect_key'            // SSH key path
         SSH_USER = 'ec2-user'                                // SSH user for remote hosts
+        
+        // Maven cache in workspace to avoid re-downloading dependencies
+        MAVEN_OPTS = "-Dmaven.repo.local=${WORKSPACE}/.m2"
         
         // Kafka Connect host lists per environment (space-separated)
         // Configure in Jenkins as environment variables:
@@ -54,6 +58,7 @@ pipeline {
             steps {
                 sh '''
                     VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+                    echo "VERSION=${VERSION}" > /tmp/build_version.txt
                     echo "Artifact version: ${VERSION}"
                     
                     # Verify package distribution was created
@@ -75,12 +80,7 @@ pipeline {
             }
             steps {
                 script {
-                    // Get version from pom.xml using Maven
-                    sh '''
-                        VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-                        echo "VERSION=${VERSION}" > /tmp/build_version.txt
-                    '''
-                    
+                    // Get version from file written in Archive stage
                     def version = readFile('/tmp/build_version.txt').trim().split('=')[1]
                     
                     // Determine host list and service name based on environment
