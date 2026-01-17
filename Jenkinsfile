@@ -52,15 +52,13 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    // Skip build if deploying AND a package archive already exists
+                    // Skip build if deploying AND artifacts already archived in Jenkins
                     def skipBuild = false
                     if (params.DEPLOY_TO_KAFKA_CONNECT == true) {
-                        def result = sh(
-                            script: 'ls target/ 2>/dev/null | grep -c "kafka-connect-jdbc.*-package"',
-                            returnStdout: true
-                        ).trim().toInteger()
-                        if (result > 0) {
-                            echo "Deploy mode: Package archive found, skipping build"
+                        // Check if Jenkins has already archived artifacts for this build
+                        def artifactArchivePath = "${JENKINS_HOME}/jobs/${JOB_NAME}/builds/${BUILD_NUMBER}/archive"
+                        if (fileExists(artifactArchivePath)) {
+                            echo "Deploy mode: Jenkins artifacts found at ${artifactArchivePath}, skipping build"
                             skipBuild = true
                         }
                     }
