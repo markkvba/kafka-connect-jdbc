@@ -89,26 +89,7 @@ if [ "$RESTART_MODE" = "-c" ]; then
         echo "✗ Failed to stop Kafka Connect"
         exit 1
     fi
-    
-    # Wait for Connect to be fully stopped
-    echo "Waiting for Kafka Connect to be fully stopped..."
-    max_attempts=5
-    attempt=0
-    while [ $attempt -lt $max_attempts ]; do
-        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -iq "stopped"; then
-            echo "✓ Kafka Connect is stopped"
-            break
-        fi
-        attempt=$((attempt + 1))
-        if [ $attempt -lt $max_attempts ]; then
-            sleep 2
-        fi
-    done
-    
-    if [ $attempt -ge $max_attempts ]; then
-        echo "✗ Kafka Connect failed to stop within timeout"
-        exit 1
-    fi
+    echo "✓ Kafka Connect stopped"
     
     echo "Starting Kafka Connect..."
     sudo /usr/local/bin/res_scripts/kafka_start.sh -c
@@ -116,26 +97,7 @@ if [ "$RESTART_MODE" = "-c" ]; then
         echo "✗ Failed to start Kafka Connect"
         exit 1
     fi
-    
-    # Wait for Connect to be ready
-    echo "Waiting for Kafka Connect to be ready..."
-    max_attempts=5
-    attempt=0
-    while [ $attempt -lt $max_attempts ]; do
-        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -iq "running"; then
-            echo "✓ Kafka Connect is ready"
-            break
-        fi
-        attempt=$((attempt + 1))
-        if [ $attempt -lt $max_attempts ]; then
-            sleep 2
-        fi
-    done
-    
-    if [ $attempt -ge $max_attempts ]; then
-        echo "✗ Kafka Connect failed to start within timeout"
-        exit 1
-    fi
+    echo "✓ Kafka Connect started"
 else
     echo "Restart mode: Full cluster"
     echo "Stopping Kafka..."
@@ -144,26 +106,7 @@ else
         echo "✗ Failed to stop Kafka"
         exit 1
     fi
-    
-    # Wait for Connect to be fully stopped
-    echo "Waiting for Kafka Connect to be fully stopped..."
-    max_attempts=5
-    attempt=0
-    while [ $attempt -lt $max_attempts ]; do
-        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -iq "stopped"; then
-            echo "✓ Kafka Connect is stopped"
-            break
-        fi
-        attempt=$((attempt + 1))
-        if [ $attempt -lt $max_attempts ]; then
-            sleep 2
-        fi
-    done
-    
-    if [ $attempt -ge $max_attempts ]; then
-        echo "✗ Kafka Connect failed to stop within timeout"
-        exit 1
-    fi
+    echo "✓ Kafka stopped"
     
     echo "Starting Kafka..."
     sudo /usr/local/bin/res_scripts/kafka_start.sh
@@ -171,26 +114,7 @@ else
         echo "✗ Failed to start Kafka"
         exit 1
     fi
-    
-    # Wait for Connect to be ready
-    echo "Waiting for Kafka Connect to be ready..."
-    max_attempts=30
-    attempt=0
-    while [ $attempt -lt $max_attempts ]; do
-        if sudo /usr/local/bin/res_scripts/kafka_status.sh 2>&1 | grep -iq "running"; then
-            echo "✓ Kafka Connect is ready"
-            break
-        fi
-        attempt=$((attempt + 1))
-        if [ $attempt -lt $max_attempts ]; then
-            sleep 2
-        fi
-    done
-    
-    if [ $attempt -ge $max_attempts ]; then
-        echo "✗ Kafka Connect failed to start within timeout"
-        exit 1
-    fi
+    echo "✓ Kafka started"
 fi
 
 echo "Checking status..."
