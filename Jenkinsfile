@@ -67,14 +67,14 @@ pipeline {
                 }
             }
             steps {
-                sh 'mvn -s maven-settings.xml clean package -DskipTests -Dcheckstyle.skip=true -T 1C'
+                sh 'mvn clean package -DskipTests -Dcheckstyle.skip=true -T 1C'
             }
         }
 
         stage('Archive') {
             steps {
                 sh '''
-                    VERSION=$(mvn -s maven-settings.xml help:evaluate -Dexpression=project.version -q -DforceStdout)
+                    VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
                     echo "VERSION=${VERSION}" > /tmp/build_version.txt
                     echo "Artifact version: ${VERSION}"
                     
