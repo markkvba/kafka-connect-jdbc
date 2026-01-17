@@ -137,9 +137,6 @@ pipeline {
     }
 
     post {
-        always {
-            cleanWs()
-        }
         success {
             echo "✓ kafka-connect-jdbc built and deployed successfully to ${params.ENVIRONMENT}"
         }

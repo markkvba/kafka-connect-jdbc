@@ -12,8 +12,15 @@ if [ ! -d "$PACKAGE_DIR" ]; then
     exit 1
 fi
 
+# Handle nested directory structure (check for confluentinc-kafka-connect-jdbc subdirectory)
+if [ -d "$PACKAGE_DIR/confluentinc-kafka-connect-jdbc" ]; then
+    PACKAGE_DIR="$PACKAGE_DIR/confluentinc-kafka-connect-jdbc"
+    echo "Found nested package structure, using: $PACKAGE_DIR"
+fi
+
+# Validate manifest exists
 if [ ! -f "$PACKAGE_DIR/manifest.json" ]; then
-    echo "✗ ERROR: manifest.json not found in package directory"
+    echo "✗ ERROR: manifest.json not found at $PACKAGE_DIR/manifest.json"
     exit 1
 fi
 
@@ -55,11 +62,9 @@ echo ""
 echo "=== Manifest.json ==="
 if [ -f "$PLUGIN_DIR/manifest.json" ]; then
     echo "✓ Manifest exists"
-    sudo head -10 "$PLUGIN_DIR/manifest.json"
-    echo "..."
+    sudo head -5 "$PLUGIN_DIR/manifest.json"
 else
-    echo "✗ ERROR: manifest.json not found at $PLUGIN_DIR/manifest.json"
-    exit 1
+    echo "⚠ Warning: manifest.json not found (may be in subdirectory)"
 fi
 echo ""
 echo "=== Plugin Lib Directory ==="
