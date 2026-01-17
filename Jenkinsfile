@@ -54,9 +54,12 @@ pipeline {
                 expression {
                     // Skip build if deploying AND a package archive already exists
                     if (params.DEPLOY_TO_KAFKA_CONNECT == true) {
-                        def packageDir = new File("${WORKSPACE}/target").listFiles()?.find { it.isDirectory() && it.name.contains('kafka-connect-jdbc') && it.name.contains('package') }
-                        if (packageDir) {
-                            echo "Deploy mode: Package archive found (${packageDir.name}), skipping build"
+                        def checkResult = sh(
+                            script: 'test -d target/kafka-connect-jdbc-*-package',
+                            returnStatus: true
+                        )
+                        if (checkResult == 0) {
+                            echo "Deploy mode: Package archive found, skipping build"
                             return false
                         }
                     }
