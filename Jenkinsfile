@@ -56,10 +56,10 @@ pipeline {
                     def skipBuild = false
                     if (params.DEPLOY_TO_KAFKA_CONNECT == true) {
                         def result = sh(
-                            script: 'test -d target/kafka-connect-jdbc-*-package',
-                            returnStatus: true
-                        )
-                        if (result == 0) {
+                            script: 'ls target/ 2>/dev/null | grep -c "kafka-connect-jdbc.*-package"',
+                            returnStdout: true
+                        ).trim().toInteger()
+                        if (result > 0) {
                             echo "Deploy mode: Package archive found, skipping build"
                             skipBuild = true
                         }
