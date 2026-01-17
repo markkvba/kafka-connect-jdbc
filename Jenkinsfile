@@ -54,12 +54,9 @@ pipeline {
                 expression {
                     // Skip build if deploying AND a package archive already exists
                     if (params.DEPLOY_TO_KAFKA_CONNECT == true) {
-                        def packageExists = sh(
-                            script: 'ls -d target/kafka-connect-jdbc-*-package 2>/dev/null | head -1',
-                            returnStdout: true
-                        ).trim()
-                        if (packageExists) {
-                            echo "Deploy mode: Package archive found (${packageExists}), skipping build"
+                        def packageDir = new File("${WORKSPACE}/target").listFiles()?.find { it.isDirectory() && it.name.contains('kafka-connect-jdbc') && it.name.contains('package') }
+                        if (packageDir) {
+                            echo "Deploy mode: Package archive found (${packageDir.name}), skipping build"
                             return false
                         }
                     }
@@ -98,7 +95,8 @@ pipeline {
             steps {
                 script {
                     // Get version from file written in Archive stage
-                    def version = readFile('/tmp/build_version.txt').trim().split('=')[1]
+                    def versionFile = readFile('/tmp/build_version.txt').trim()
+                    def version = versionFile.replaceAll('VERSION=', '')
                     
                     // Determine host list and service name based on environment
                     def hosts = getDeploymentHosts(params.ENVIRONMENT)
