@@ -82,6 +82,15 @@
     </properties>
     <repositories>
         <repository>
+            <id>central</id>
+            <name>Central Repository</name>
+            <url>https://packages.confluent.io/maven/</url>
+            <layout>default</layout>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
             <id>confluent</id>
             <name>Confluent</name>
             <url>https://packages.confluent.io/maven/</url>
