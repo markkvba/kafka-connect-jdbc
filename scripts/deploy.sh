@@ -68,11 +68,11 @@ else
 fi
 echo ""
 echo "=== Plugin Lib Directory ==="
-if [ -d "$PLUGIN_DIR/share/java/kafka-connect-jdbc" ]; then
+if [ -d "$PLUGIN_DIR/lib" ]; then
     echo "✓ JARs directory exists"
-    sudo ls -lah "$PLUGIN_DIR/share/java/kafka-connect-jdbc/"
+    sudo ls -lah "$PLUGIN_DIR/lib/"
 else
-    echo "✗ WARNING: JARs directory not found"
+    echo "✗ WARNING: JARs directory not found at $PLUGIN_DIR/lib/"
 fi
 echo ""
 echo "=== Permissions ==="
