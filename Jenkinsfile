@@ -51,22 +51,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                script {
-                    // Skip build if deploying AND artifacts already archived in Jenkins
-                    def skipBuild = false
-                    if (params.DEPLOY_TO_KAFKA_CONNECT == true) {
-                        // Check if Jenkins has already archived artifacts for this build
-                        def artifactArchivePath = "${JENKINS_HOME}/jobs/${JOB_NAME}/builds/${BUILD_NUMBER}/archive"
-                        if (fileExists(artifactArchivePath)) {
-                            echo "Deploy mode: Jenkins artifacts found at ${artifactArchivePath}, skipping build"
-                            skipBuild = true
-                        }
-                    }
-                    
-                    if (!skipBuild) {
-                        sh 'mvn clean package -DskipTests -Dcheckstyle.skip=true -T 1C'
-                    }
-                }
+                sh 'mvn clean package -DskipTests -Dcheckstyle.skip=true -T 1C'
             }
         }
 
