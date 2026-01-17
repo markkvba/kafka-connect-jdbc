@@ -2,7 +2,7 @@
 set -e
 
 PACKAGE_DIR="${1:?Error: Package directory path not provided}"
-RESTART_MODE="${2:}"  # "-c" to restart only Connect, default restarts full cluster
+RESTART_MODE="${2:-}"  # "-c" to restart only Connect, default restarts full cluster
 KAFKA_CONNECT_PLUGINS_DIR="/usr/share/java/connect_plugins/"
 PLUGIN_DIR="${KAFKA_CONNECT_PLUGINS_DIR}confluentinc-kafka-connect-jdbc"
 
