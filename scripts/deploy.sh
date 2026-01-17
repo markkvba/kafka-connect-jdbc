@@ -120,4 +120,11 @@ fi
 echo "Checking status..."
 sudo /usr/local/bin/res_scripts/kafka_status.sh
 
+# Cleanup temporary files
+echo ""
+echo "Cleaning up temporary deployment files..."
+rm -rf "$1" 2>/dev/null || true
+rm -f /tmp/deploy.sh 2>/dev/null || true
+echo "✓ Cleanup complete"
+
 echo "✓ Deployment complete!"
