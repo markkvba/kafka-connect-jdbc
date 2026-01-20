@@ -8,10 +8,16 @@
         <format>dir</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
+    <files>
+        <file>
+            <source>${project.build.directory}/manifest.json</source>
+            <outputDirectory>/</outputDirectory>
+        </file>
+    </files>
     <fileSets>
         <fileSet>
             <directory>${project.basedir}</directory>
-            <outputDirectory>share/doc/kafka-connect-jdbc/</outputDirectory>
+            <outputDirectory>doc/</outputDirectory>
             <includes>
                 <include>version.txt</include>
                 <include>README*</include>
@@ -24,7 +30,7 @@
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/config</directory>
-            <outputDirectory>etc/kafka-connect-jdbc</outputDirectory>
+            <outputDirectory>etc/</outputDirectory>
             <includes>
                 <include>*</include>
             </includes>
@@ -32,7 +38,7 @@
     </fileSets>
     <dependencySets>
         <dependencySet>
-            <outputDirectory>share/java/kafka-connect-jdbc</outputDirectory>
+            <outputDirectory>lib/</outputDirectory>
             <useProjectArtifact>true</useProjectArtifact>
             <useTransitiveFiltering>true</useTransitiveFiltering>
             <excludes>

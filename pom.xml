@@ -26,7 +26,7 @@
     <groupId>io.confluent</groupId>
     <artifactId>kafka-connect-jdbc</artifactId>
     <packaging>jar</packaging>
-    <version>10.10.0-SNAPSHOT</version>
+    <version>10.10.0-RES</version>
     <name>kafka-connect-jdbc</name>
     <organization>
         <name>Confluent, Inc.</name>
@@ -279,18 +279,7 @@
             <version>2.5.4</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-runtime</artifactId>
-            <version>${kafka.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-runtime</artifactId>
